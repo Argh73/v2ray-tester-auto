@@ -1,62 +1,64 @@
-#!/usr/bin/env python3
+
 import asyncio
 import sys
+import subprocess
 from pathlib import Path
 
-# Import from the package
 sys.path.insert(0, str(Path(__file__).parent))
 
-from v2ray_tester.subs import load_subs, fetch_all_subs
-from v2ray_tester.options import TestOptions
+from v2ray_tester.subs import load_subs
 from v2ray_tester.process import find_xray
-import v2ray_tester.tester as tester_module
 
-async def main():
- print("🚀 Starting headless V2Ray tester with limit...")
 
- xray_path = find_xray()
- if not xray_path:
- print("❌ Xray not found!")
- return
+async def run_headless():
+    print("🚀 Starting Headless V2Ray Tester with Limit")
 
- opts = TestOptions()
- opts.live_output = False
- opts.speed_size = 2 * 1024 * 1024 
- 
- MAX_GOOD = 800
+    xray_path = find_xray()
+    if not xray_path:
+        print("❌ Xray core not found!")
+        return 1
 
- print(f"Target: Stop after {MAX_GOOD} good configs")
+    print(f"✅ Xray found: {xray_path}")
 
- subs = load_subs()
- if not subs:
- print("No subs in subs.txt")
- return
+    subs = load_subs()
+    print(f"📋 Loaded {len(subs)} subscription link(s)")
 
- print(f"Found {len(subs)} subscription link(s)")
+    MAX_GOOD_CONFIGS = 800  
+    MAX_TIME_MINUTES = 25
 
- # Fetch configs
- links, _, _ = await fetch_all_subs(subs, concurrency=20)
- print(f"Extracted {len(links)} configs")
+    print(f"🎯 Target: Stop after {MAX_GOOD_CONFIGS} good configs or {MAX_TIME_MINUTES} minutes")
 
- if len(links) == 0:
- return
+    try:
+        # اجرای Bulk Tester با محدودیت زمانی
+        process = subprocess.run(
+            [
+                "python", "v2ray-bulk-tester.py",
+                "-i", "subs.txt",
+                "-o", "Test.txt",
+                "-c", "25"        
+            ],
+            timeout=MAX_TIME_MINUTES * 60,
+            capture_output=True,
+            text=True
+        )
+        
+        print(process.stdout)
+        if process.stderr:
+            print("Errors:", process.stderr)
 
- print("Starting bulk test with limit...")
+    except subprocess.TimeoutExpired:
+        print(f"⏰ Time limit ({MAX_TIME_MINUTES} minutes) reached. Stopping...")
+    except Exception as e:
+        print(f"❌ Error: {e}")
 
- try:
- import subprocess
- result = subprocess.run([
- "python", "v2ray-bulk-tester.py",
- "-i", "subs.txt",
- "-o", "Test.txt",
- "-c", "25"
- ], timeout=1200, capture_output=True, text=True) # 20 دقیقه
- 
- print(result.stdout)
- except subprocess.TimeoutExpired:
- print("⏰ Time limit reached. Stopping...")
+    if Path("Test.txt").exists():
+        good_count = sum(1 for line in open("Test.txt") if line.strip())
+        print(f"✅ Finished! Total good configs in Test.txt: {good_count}")
+    else:
+        print("⚠️ Test.txt not created")
 
- print(f"✅ Process finished. Check Test.txt (target was {MAX_GOOD} good configs)")
+    return 0
+
 
 if __name__ == "__main__":
- asyncio.run(main())
+    asyncio.run(run_headless())
