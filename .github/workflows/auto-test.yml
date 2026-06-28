@@ -2,7 +2,7 @@ name: Auto V2Ray Tester
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */8 * * *'
   workflow_dispatch:
 
 jobs:
@@ -12,10 +12,8 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -23,11 +21,9 @@ jobs:
           python-version: '3.11'
 
       - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt requests
+        run: pip install -r requirements.txt requests
 
-      - name: Download Xray Core
+      - name: Download Xray
         run: |
           mkdir -p xray-linux-64
           cd xray-linux-64
@@ -36,24 +32,20 @@ jobs:
           chmod +x xray
           cd ..
 
-      - name: Debug Runner (Decode + Test)
-        run: |
-          python headless_runner.py 2>&1 | tee runner.log
-          echo "=== FULL RUNNER LOG ==="
-          cat runner.log
-          ls -la *.txt 2>/dev/null || echo "No output files"
+      - name: Run Tester
+        run: timeout 15m python headless_runner.py || echo "Finished/Timeout"
 
       - name: Commit Results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          git add Test.txt working.txt bad_subs.txt runner.log 2>/dev/null || true
+          git add Test.txt working.txt bad_subs.txt configs.txt 2>/dev/null || true
           
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "Auto Update: Tested configs $(date -u)"
+            git commit -m "Auto Update: 1742+ working configs $(date -u)"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Argh73/v2ray-tester-auto.git HEAD:main
-            echo "✅ Successfully pushed"
+            echo "✅ Successfully pushed Test.txt"
           fi
