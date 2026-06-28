@@ -33,19 +33,21 @@ jobs:
           cd ..
 
       - name: Run Tester
-        run: timeout 15m python headless_runner.py || echo "Finished/Timeout"
+        run: timeout 12m python headless_runner.py || echo "Finished"
 
-      - name: Commit Results
+      - name: Commit & Push Test.txt
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-          git add Test.txt working.txt bad_subs.txt configs.txt 2>/dev/null || true
+          # Force add
+          git add -f Test.txt 2>/dev/null || true
+          git add -f working.txt 2>/dev/null || true
           
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "Auto Update: 1742+ working configs $(date -u)"
+          if git diff --cached --name-only | grep -q "Test.txt"; then
+            git commit -m "Auto Update: Working configs $(date -u)"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Argh73/v2ray-tester-auto.git HEAD:main
-            echo "✅ Successfully pushed Test.txt"
+            echo "✅ Test.txt pushed successfully"
+          else
+            echo "No Test.txt to commit or already up to date"
           fi
