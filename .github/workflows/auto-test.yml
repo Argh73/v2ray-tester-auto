@@ -25,7 +25,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements.txt requests
 
       - name: Download Xray Core
         run: |
@@ -36,13 +36,12 @@ jobs:
           chmod +x xray
           cd ..
 
-      - name: Debug Runner
+      - name: Debug Runner (Decode + Test)
         run: |
-          ls -la
           python headless_runner.py 2>&1 | tee runner.log
           echo "=== FULL RUNNER LOG ==="
           cat runner.log
-          ls -la *.txt 2>/dev/null || echo "No txt files generated"
+          ls -la *.txt 2>/dev/null || echo "No output files"
 
       - name: Commit Results
         run: |
@@ -56,5 +55,5 @@ jobs:
           else
             git commit -m "Auto Update: Tested configs $(date -u)"
             git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Argh73/v2ray-tester-auto.git HEAD:main
-            echo "✅ Pushed successfully"
+            echo "✅ Successfully pushed"
           fi
