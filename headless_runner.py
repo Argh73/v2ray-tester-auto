@@ -26,7 +26,7 @@ else:
 
 # ذخیره configs
 with open("configs.txt", "w") as f:
-    for c in configs[:5000]:   # حداکثر ۵۰۰۰ تا
+    for c in configs[:1000]:   # حداکثر ۵۰۰۰ تا
         f.write(c + "\n")
 
 print(f"Total configs saved: {len(configs)}")
