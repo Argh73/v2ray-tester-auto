@@ -1,0 +1,52 @@
+name: Auto V2Ray Tester
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # هر ۶ ساعت
+  workflow_dispatch:
+
+jobs:
+  test-configs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download Xray Core
+        run: |
+          mkdir -p xray-linux-64
+          cd xray-linux-64
+          wget -q https://github.com/XTLS/Xray-core/releases/latest/download/Xray-linux-64.zip
+          unzip -o Xray-linux-64.zip
+          chmod +x xray
+          cd ..
+
+      - name: Prepare Input
+        run: |
+          echo "https://raw.githubusercontent.com/Argh73/VpnConfigCollector/refs/heads/main/All_Configs_Sub.txt" > subs.txt
+          echo "✅ Input link added"
+
+      - name: Run Bulk Tester
+        run: |
+          timeout 30m python v2ray-bulk-tester.py -i subs.txt -o Test.txt -c 25 || \
+          echo "Bulk tester failed, trying main.py..." && timeout 30m python main.py --auto
+
+      - name: Commit Results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          git add Test.txt working.txt bad_subs.txt 2>/dev/null || true
+          git commit -m "Auto Update: Tested configs $(date -u)" || echo "No changes"
+          git push
