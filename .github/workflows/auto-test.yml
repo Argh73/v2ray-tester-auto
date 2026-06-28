@@ -3,15 +3,17 @@ name: Auto V2Ray Tester
 on:
   schedule:
     - cron: '0 */6 * * *'    # هر ۶ ساعت
-  workflow_dispatch:         # امکان اجرای دستی
+  workflow_dispatch:
 
 jobs:
   test-configs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write     # اجازه push
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -37,17 +39,23 @@ jobs:
       - name: Prepare subs.txt
         run: |
           echo "https://raw.githubusercontent.com/Argh73/VpnConfigCollector/refs/heads/main/All_Configs_Sub.txt" > subs.txt
-          echo "✅ Raw link added to subs.txt"
+          echo "✅ Raw link added"
 
       - name: Run Headless Tester (with limit)
         run: |
           timeout 28m python headless_runner.py || echo "Process finished or timed out"
 
-      - name: Commit Results
+      - name: Commit & Push Results
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
           git add Test.txt working.txt bad_subs.txt 2>/dev/null || true
-          git commit -m "Auto Update: Tested configs $(date -u)" || echo "No changes to commit"
-          git push
+          
+          if git diff --cached --quiet; then
+            echo "✅ No changes to commit"
+          else
+            git commit -m "Auto Update: Tested configs $(date -u)"
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Argh73/v2ray-tester-auto.git HEAD:main
+            echo "✅ Successfully pushed new results"
+          fi
